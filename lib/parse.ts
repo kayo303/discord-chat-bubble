@@ -41,20 +41,17 @@ function cleanContent(raw: string) {
   const cleaned: string[] = [];
 
   for (let line of lines) {
-    // 원문 "이미지" 줄은 이제 parse 단계에서 [[IMG:...]]로 바뀌지만, 혹시 남아있으면 삭제
     if (line.trim() === "이미지") continue;
 
-    // ✅ 이미지 토큰 라인은 유지
+    // 이미지 토큰은 유지
     if (isImgTokenLine(line)) {
       cleaned.push(line.trimEnd());
       continue;
     }
 
-    // ✅ 이모지 토큰(:name:)은 이제 “업로드 매핑 렌더”에서 처리하므로 여기서 지우지 않음
-    // 공백 정리만 살짝
+    // 이모지 토큰(:name:)은 렌더 단계에서 업로드 매핑으로 처리하므로 여기서 제거하지 않음
     line = line.replace(/[ \t]+/g, " ").trimEnd();
 
-    // 완전 빈 줄은 일단 제거(원하면 유지 가능)
     if (line.trim() === "") continue;
 
     cleaned.push(line);
@@ -74,7 +71,6 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
   let current: Omit<ParsedMessage, "content"> & { contentLines: string[] } | null =
     null;
 
-  // ✅ "이미지" 줄을 슬롯 토큰으로 바꾸기 위한 카운터
   let imgCounter = 0;
 
   for (const line of lines) {
