@@ -56,7 +56,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // ✅ 옐로우(유지: 밝은 계열)
   yellow: {
     key: "yellow",
-    label: "Yellow (Pastel)",
+    label: "Yellow",
     bg: "#FFF7E6",
     panel: "#FFFFFF",
     header: "#FFF3D1",
@@ -70,7 +70,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // 🌸 파스텔 핑크 (전면 교체)
   pink: {
     key: "pink",
-    label: "Pink (Pastel)",
+    label: "Pink",
     bg: "#F7E9EE",
     panel: "#F3DCE4",
     header: "#F7EFF3",
@@ -84,7 +84,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // 🫐 파스텔 블루 (전면 교체)
   blue: {
     key: "blue",
-    label: "Blue (Pastel)",
+    label: "Blue",
     bg: "#EAF3F9",
     panel: "#DDEBF6",
     header: "#F2F8FC",
@@ -98,7 +98,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // 🌿 파스텔 그린 (전면 교체)
   green: {
     key: "green",
-    label: "Green (Pastel)",
+    label: "Green",
     bg: "#ECF6F1",
     panel: "#DFF0E7",
     header: "#F3FAF7",
@@ -112,7 +112,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // 🍑 파스텔 오렌지/피치 (전면 교체)
   orange: {
     key: "orange",
-    label: "Orange (Pastel)",
+    label: "Orange",
     bg: "#FAEFE6",
     panel: "#F4E0D2",
     header: "#FDF6F0",
@@ -126,7 +126,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // 🪻 파스텔 퍼플/라벤더 (전면 교체)
   purple: {
     key: "purple",
-    label: "Purple (Pastel)",
+    label: "Purple",
     bg: "#F1EDF8",
     panel: "#E5DFF4",
     header: "#F7F5FC",
@@ -140,7 +140,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
   // ❤️ 파스텔 레드/로제 (전면 교체)
   red: {
     key: "red",
-    label: "Red (Pastel)",
+    label: "Red",
     bg: "#F8ECEC",
     panel: "#F2DCDC",
     header: "#FBF3F3",
