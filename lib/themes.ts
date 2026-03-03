@@ -53,7 +53,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#6B7280",
   },
 
-  // ✅ 옐로우(유지: 밝은 계열)
+  // ✅ 옐로우(유지)
   yellow: {
     key: "yellow",
     label: "Yellow",
@@ -67,7 +67,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#6B7280",
   },
 
-  // 🌸 파스텔 핑크 (전면 교체)
+  // 🌸 파스텔 핑크(유지)
   pink: {
     key: "pink",
     label: "Pink",
@@ -81,7 +81,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#5F5F5F",
   },
 
-  // 🫐 파스텔 블루 (전면 교체)
+  // 🫐 파스텔 블루(유지)
   blue: {
     key: "blue",
     label: "Blue",
@@ -95,7 +95,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#5F6B75",
   },
 
-  // 🌿 파스텔 그린 (전면 교체)
+  // 🌿 파스텔 그린(유지)
   green: {
     key: "green",
     label: "Green",
@@ -109,21 +109,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#5F6F65",
   },
 
-  // 🍑 파스텔 오렌지/피치 (전면 교체)
-  orange: {
-    key: "orange",
-    label: "Orange",
-    bg: "#FAEFE6",
-    panel: "#F4E0D2",
-    header: "#FDF6F0",
-    border: "#E8C9B4",
-    hover: "#EFD6C6",
-    divider: "#E8C9B4",
-    text: "#1A1A1A",
-    subtext: "#6B5B4F",
-  },
-
-  // 🪻 파스텔 퍼플/라벤더 (전면 교체)
+  // 🪻 파스텔 퍼플(유지)
   purple: {
     key: "purple",
     label: "Purple",
@@ -137,16 +123,30 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#655E74",
   },
 
-  // ❤️ 파스텔 레드/로제 (전면 교체)
+  // 🍊 Orange: 피치 느낌 줄이고 "Apricot/Sand"로 재설계 (핑크와 분리)
+  orange: {
+    key: "orange",
+    label: "Orange",
+    bg: "#FAF1E7",     // 아주 연한 샌드/크림 오렌지
+    panel: "#F4E4D3",  // 살구-베이지
+    header: "#FDF7F0", // 거의 화이트에 따뜻한 기
+    border: "#E8CCB1", // 따뜻한 베이지 보더
+    hover: "#EEDAC6",  // 살짝 진하게(호버)
+    divider: "#E8CCB1",
+    text: "#1A1A1A",
+    subtext: "#6B5B4F",
+  },
+
+  // 🧡 Red: 핑크 대신 "Coral/Warm" 축으로 이동 (핑크와 분리, 너무 다크 X)
   red: {
     key: "red",
     label: "Red",
-    bg: "#F8ECEC",
-    panel: "#F2DCDC",
-    header: "#FBF3F3",
-    border: "#E4C5C5",
-    hover: "#EBCFCF",
-    divider: "#E4C5C5",
+    bg: "#FBEDEA",     // 아주 연한 코랄 크림
+    panel: "#F6DDD7",  // 로즈가 아닌 코랄 베이지
+    header: "#FDF3F1", // 부드러운 웜 화이트
+    border: "#EABFBA", // 코랄 톤 보더
+    hover: "#F0D1CC",  // 살짝 진하게(호버)
+    divider: "#EABFBA",
     text: "#1A1A1A",
     subtext: "#6A5555",
   },
