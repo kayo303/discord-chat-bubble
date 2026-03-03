@@ -1,8 +1,8 @@
 export type ParsedMessage = {
   author: string;
-  date: string;      // YYYY-MM-DD
-  rawTime: string;   // "오전 1:02" / "오후 12:39"
-  datetime: string;  // ISO-like key
+  date: string; // YYYY-MM-DD
+  rawTime: string; // "오전 1:02" / "오후 12:39"
+  datetime: string; // ISO-like key
   content: string;
 };
 
@@ -40,24 +40,26 @@ function cleanContent(raw: string) {
   const cleanedLines: string[] = [];
 
   for (let line of lines) {
-    // 1) 줄 전체가 '이미지' (앞뒤 공백 포함 가능)면 삭제
+    // ✅ "이미지"라는 원문 줄은 이제 파서에서 [[IMG:...]] 로 바뀌므로
+    // 여기서는 굳이 안 만져도 되지만, 혹시 남아있을 경우 안전하게 삭제
     if (line.trim() === "이미지") continue;
 
-    // 2) :emoji_name: 토큰 제거 (여러 개 가능)
-    // - 콜론 안에는 공백 없는 문자들(영문/숫자/_ 등)이 보통이라 이렇게 잡음
-    // - 예: ":saeu_kirat:" ":oeishiguelmae:"
-    line = line.replace(/:[^\s:]+:/g, "");
+    // ✅ 이미지 토큰은 유지
+    const isImgToken = /^\[\[IMG:[^\]]+\]\]$/.test(line.trim());
+    if (!isImgToken) {
+      // 2) :emoji_name: 토큰 제거 (여러 개 가능)
+      line = line.replace(/:[^\s:]+:/g, "");
 
-    // 토큰 지운 뒤에 남은 공백 정리
-    line = line.replace(/[ \t]+/g, " ").trimEnd();
+      // 토큰 지운 뒤에 남은 공백 정리
+      line = line.replace(/[ \t]+/g, " ").trimEnd();
 
-    // 토큰만 있던 줄이면 빈 줄이 되니까 삭제
-    if (line.trim() === "") continue;
+      // 토큰만 있던 줄이면 빈 줄이 되니까 삭제
+      if (line.trim() === "") continue;
+    }
 
     cleanedLines.push(line);
   }
 
-  // 줄 사이 빈 줄 과다 방지: 연속 빈 줄 제거(이미 위에서 빈 줄은 제거했지만 안전장치)
   return cleanedLines.join("\n").trimEnd();
 }
 
@@ -66,12 +68,17 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
 
   // ✅ 헤더 2종 지원
   // 1) 작성자 — 2026-02-20 오후 1:02
-  const withDate = /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
+  const withDate =
+    /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
   // 2) 작성자 — 오후 1:02  (당일/날짜 생략)
   const timeOnly = /^(.+?)\s*—\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
 
   const out: ParsedMessage[] = [];
-  let current: Omit<ParsedMessage, "content"> & { contentLines: string[] } | null = null;
+  let current: Omit<ParsedMessage, "content"> & { contentLines: string[] } | null =
+    null;
+
+  // ✅ "이미지" 줄을 슬롯 토큰으로 바꾸기 위한 카운터
+  let imgCounter = 0;
 
   for (const line of lines) {
     const l = line.trimEnd();
@@ -125,7 +132,13 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
 
     // 헤더가 아닌 줄: 현재 메시지 본문으로 붙이기
     if (current) {
-      current.contentLines.push(l);
+      if (l.trim() === "이미지") {
+        imgCounter += 1;
+        const slotId = `img_${imgCounter}`;
+        current.contentLines.push(`[[IMG:${slotId}]]`);
+      } else {
+        current.contentLines.push(l);
+      }
     }
   }
 
