@@ -172,12 +172,8 @@ export default function Page() {
 
   function loadSample() {
     setRaw(`Saint — 2022-02-18 오전 6:30
-영원히 안녕. 나의 대발명가.
-:emoji:
-이미지
-이 문장에는 :emoji: 이모지가 있어.
-:emoji: :emoji:
-그리고 끝.`);
+영원히 안녕. 나의 대발명가. :emoji:
+이미지`);
   }
 
   return (
