@@ -10,9 +10,18 @@ function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function todayYmd() {
-  const d = new Date();
+function ymdFromDate(d: Date) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function todayYmd() {
+  return ymdFromDate(new Date());
+}
+
+function yesterdayYmd() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return ymdFromDate(d);
 }
 
 function normalizeTimeKor(raw: string) {
@@ -63,9 +72,16 @@ function cleanContent(raw: string) {
 export function parseDiscordPaste(input: string): ParsedMessage[] {
   const lines = input.replace(/\r\n/g, "\n").split("\n");
 
+  // ✅ 헤더 지원
+  // 1) 작성자 — 2026-02-20 오후 1:02
   const withDate =
     /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
+
+  // 2) 작성자 — 오후 1:02  (오늘)
   const timeOnly = /^(.+?)\s*—\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
+
+  // ✅ 3) 작성자 — 어제 오전 2:10 (어제)
+  const yesterdayOnly = /^(.+?)\s*—\s*(어제)\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
 
   const out: ParsedMessage[] = [];
   let current: Omit<ParsedMessage, "content"> & { contentLines: string[] } | null =
@@ -86,11 +102,18 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
       date = m1[2];
       rawTime = `${m1[3]} ${m1[4]}`;
     } else {
-      const m2 = l.match(timeOnly);
-      if (m2) {
-        author = m2[1].trim();
-        date = todayYmd();
-        rawTime = `${m2[2]} ${m2[3]}`;
+      const m3 = l.match(yesterdayOnly);
+      if (m3) {
+        author = m3[1].trim();
+        date = yesterdayYmd(); // ✅ "어제"면 어제 날짜 적용
+        rawTime = `${m3[3]} ${m3[4]}`;
+      } else {
+        const m2 = l.match(timeOnly);
+        if (m2) {
+          author = m2[1].trim();
+          date = todayYmd(); // ✅ 날짜 없으면 "오늘"
+          rawTime = `${m2[2]} ${m2[3]}`;
+        }
       }
     }
 
