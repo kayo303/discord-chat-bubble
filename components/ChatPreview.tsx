@@ -3,6 +3,8 @@
 import React, { useMemo } from "react";
 import type { ParsedMessage } from "@/lib/parse";
 import { hashStringToHsl, initials } from "@/lib/color";
+import type { ThemeVars } from "@/lib/themes";
+import StickerLayer, { type Sticker } from "@/components/StickerLayer";
 
 type Props = {
   messages: ParsedMessage[];
@@ -13,12 +15,29 @@ type Props = {
   getDisplayName: (author: string) => string;
   getAvatarUrl: (author: string) => string | null;
 
-  // ✅ inline image slots
+  // ✅ 사용자명 컬러
+  getNameColor: (author: string) => string | null;
+
+  // ✅ inline image slots (원래 “이미지” 줄 -> [[IMG:slotId]])
   inlineImages: Record<string, string | undefined>; // slotId -> dataUrl
   onUploadInlineImage: (slotId: string, file: File) => void;
   onRemoveInlineImage: (slotId: string) => void;
 
-  // ✅ PNG 캡처 중에는 빈 슬롯 숨김
+  // ✅ emoji images (:name: -> image)
+  emojiImages: Record<string, string | undefined>; // name -> dataUrl
+
+  // ✅ 스티커
+  stickers: Sticker[];
+  setStickers: (next: Sticker[]) => void;
+
+  // ✅ 테마
+  theme: ThemeVars;
+
+  // ✅ 제목/상단바
+  title: string;
+  showHeaderBar: boolean;
+
+  // ✅ PNG 캡처 중에는 빈 슬롯/편집 UI 숨김
   captureMode: boolean;
 };
 
@@ -44,7 +63,6 @@ function mergeConsecutive(messages: ParsedMessage[]): ParsedMessage[] {
       last.content = `${last.content}\n${cur.content}`.trimEnd();
       continue;
     }
-
     out.push({ ...cur });
   }
   return out;
@@ -61,12 +79,14 @@ function InlineImageSlot({
   onUpload,
   onRemove,
   captureMode,
+  theme,
 }: {
   slotId: string;
   dataUrl?: string;
   onUpload: (file: File) => void;
   onRemove: () => void;
   captureMode: boolean;
+  theme: ThemeVars;
 }) {
   // ✅ 캡처 모드에서는 “빈 슬롯”은 아예 렌더링 안 함
   if (captureMode && !dataUrl) return null;
@@ -74,12 +94,19 @@ function InlineImageSlot({
   return (
     <div className="my-2">
       {dataUrl ? (
-        <div className="rounded-lg overflow-hidden border border-[#2B2D31]">
+        <div
+          className="rounded-lg overflow-hidden"
+          style={{ border: `1px solid ${theme.border}` }}
+        >
           <img src={dataUrl} alt="inline" className="max-w-full h-auto block" />
           {!captureMode && (
-            <div className="p-2 bg-[#1E1F22] flex justify-end">
+            <div
+              className="p-2 flex justify-end"
+              style={{ background: theme.header }}
+            >
               <button
-                className="text-xs text-[#F23F43] hover:underline"
+                className="text-xs hover:underline"
+                style={{ color: "#F23F43" }}
                 onClick={onRemove}
                 type="button"
               >
@@ -90,8 +117,13 @@ function InlineImageSlot({
         </div>
       ) : (
         !captureMode && (
-          <div className="rounded-lg border border-dashed border-[#3F4147] bg-[#1E1F22] p-3">
-            <div className="text-xs text-[#949BA4] mb-2">이미지 슬롯</div>
+          <div
+            className="rounded-lg border border-dashed p-3"
+            style={{ borderColor: theme.divider, background: theme.header }}
+          >
+            <div className="text-xs mb-2" style={{ color: theme.subtext }}>
+              이미지 슬롯
+            </div>
             <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="file"
@@ -103,7 +135,10 @@ function InlineImageSlot({
                   e.currentTarget.value = "";
                 }}
               />
-              <span className="rounded-md bg-[#2B2D31] hover:bg-[#3A3C42] px-3 py-2 text-xs">
+              <span
+                className="rounded-md px-3 py-2 text-xs"
+                style={{ background: theme.hover, color: theme.text }}
+              >
                 이미지 업로드
               </span>
             </label>
@@ -114,6 +149,61 @@ function InlineImageSlot({
   );
 }
 
+function extractEmojiNodes(line: string, emojiImages: Record<string, string | undefined>) {
+  // 1) 업로드 없는 이모지는 제거
+  // 2) 업로드 있는 이모지는 이미지로 렌더
+  // 3) 제거 후 공백 과다 정리
+  const tokens = line.match(/:[^\s:]+:/g) ?? [];
+  let normalized = line;
+  for (const t of tokens) {
+    const name = t.slice(1, -1);
+    if (!emojiImages[name]) {
+      normalized = normalized.replaceAll(t, "");
+    }
+  }
+  normalized = normalized.replace(/[ \t]{2,}/g, " ").trimEnd();
+
+  // “토큰만 있던 줄”이면 빈 줄 될 수 있음 -> 호출부에서 skip
+  const parts: React.ReactNode[] = [];
+  const re = /:([^\s:]+):/g;
+
+  let lastIdx = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(normalized)) !== null) {
+    const start = m.index;
+    const end = re.lastIndex;
+
+    const before = normalized.slice(lastIdx, start);
+    if (before) parts.push(before);
+
+    const name = m[1];
+    const url = emojiImages[name];
+    if (url) {
+      parts.push(
+        <img
+          key={`emoji-${name}-${start}`}
+          src={url}
+          alt={name}
+          className="inline-block align-text-bottom"
+          style={{ width: 18, height: 18 }}
+          draggable={false}
+        />
+      );
+    } else {
+      // 업로드 없는 이모지는 이미 제거했지만 안전장치
+      parts.push("");
+    }
+
+    lastIdx = end;
+  }
+
+  const tail = normalized.slice(lastIdx);
+  if (tail) parts.push(tail);
+
+  return { normalized, nodes: parts };
+}
+
 export default function ChatPreview({
   messages,
   showTime,
@@ -121,33 +211,64 @@ export default function ChatPreview({
   showAvatars,
   getDisplayName,
   getAvatarUrl,
+  getNameColor,
 
   inlineImages,
   onUploadInlineImage,
   onRemoveInlineImage,
+
+  emojiImages,
+
+  stickers,
+  setStickers,
+
+  theme,
+
+  title,
+  showHeaderBar,
+
   captureMode,
 }: Props) {
   const merged = useMemo(() => mergeConsecutive(messages), [messages]);
 
   return (
-    <div className="rounded-xl border border-[#2B2D31] bg-[#313338] overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#2B2D31] bg-[#2B2D31]">
-        <div className="text-sm text-[#949BA4]">미리보기</div>
-      </div>
+    <div
+      className="rounded-xl overflow-hidden relative"
+      style={{
+        border: `1px solid ${theme.border}`,
+        background: theme.panel,
+        color: theme.text,
+      }}
+    >
+      {showHeaderBar && (
+        <div
+          className="px-4 py-3 border-b"
+          style={{ borderColor: theme.border, background: theme.header }}
+        >
+          <div className="text-sm" style={{ color: theme.subtext }}>
+            {title?.trim() ? title.trim() : "미리보기"}
+          </div>
+        </div>
+      )}
 
-      <div className="p-2 sm:p-4">
+      {/* ✅ 캡처 영역(스티커가 “이미지 범위 안 어디든” 붙도록) */}
+      <div className="p-2 sm:p-4 relative">
+        {/* 스티커 레이어 */}
+        <StickerLayer stickers={stickers} setStickers={setStickers} captureMode={captureMode} />
+
         {merged.length === 0 ? (
-          <div className="p-8 text-center text-[#949BA4]">
+          <div className="p-8 text-center" style={{ color: theme.subtext }}>
             왼쪽에 디스코드 대화를 붙여넣으면 여기에 Discord 스타일로 표시돼요.
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1 relative">
             {merged.map((m, i) => {
               const prev = merged[i - 1];
               const isNewDate = !prev || prev.date !== m.date;
 
               const displayName = getDisplayName(m.author);
               const avatarUrl = getAvatarUrl(m.author);
+              const nameColor = getNameColor(m.author);
 
               const lines = m.content.split("\n");
 
@@ -155,15 +276,24 @@ export default function ChatPreview({
                 <React.Fragment key={`${m.datetime}-${i}`}>
                   {showDateDividers && isNewDate && (
                     <div className="my-3 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-[#3F4147]" />
-                      <div className="text-xs text-[#949BA4]">
+                      <div className="h-px flex-1" style={{ background: theme.divider }} />
+                      <div className="text-xs" style={{ color: theme.subtext }}>
                         {formatDateKor(m.date)}
                       </div>
-                      <div className="h-px flex-1 bg-[#3F4147]" />
+                      <div className="h-px flex-1" style={{ background: theme.divider }} />
                     </div>
                   )}
 
-                  <div className="group rounded-md px-2 py-1 hover:bg-[#2B2D31] transition-colors mt-2">
+                  <div
+                    className="group rounded-md px-2 py-1 transition-colors mt-2"
+                    style={{ background: "transparent" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = theme.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                    }}
+                  >
                     <div className="flex gap-3">
                       {/* Avatar */}
                       {showAvatars ? (
@@ -177,8 +307,8 @@ export default function ChatPreview({
                             />
                           ) : (
                             <div
-                              className="h-10 w-10 rounded-full grid place-items-center font-semibold text-sm text-white"
-                              style={{ background: hashStringToHsl(displayName) }}
+                              className="h-10 w-10 rounded-full grid place-items-center font-semibold text-sm"
+                              style={{ background: hashStringToHsl(displayName), color: "white" }}
                               aria-label={`${displayName} avatar`}
                               title={displayName}
                             >
@@ -191,16 +321,22 @@ export default function ChatPreview({
                       {/* Content */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
-                          <div className="font-semibold text-white">
+                          <div
+                            className="font-semibold"
+                            style={{ color: nameColor ?? theme.text }}
+                          >
                             {displayName}
                           </div>
                           {showTime && (
-                            <div className="text-xs text-[#949BA4]">{m.rawTime}</div>
+                            <div className="text-xs" style={{ color: theme.subtext }}>
+                              {m.rawTime}
+                            </div>
                           )}
                         </div>
 
                         <div className="text-[15px] leading-relaxed break-words mt-0.5">
                           {lines.map((line, idx) => {
+                            // 1) 이미지 슬롯
                             const slotId = getImgSlotId(line);
                             if (slotId) {
                               return (
@@ -211,15 +347,22 @@ export default function ChatPreview({
                                   onUpload={(file) => onUploadInlineImage(slotId, file)}
                                   onRemove={() => onRemoveInlineImage(slotId)}
                                   captureMode={captureMode}
+                                  theme={theme}
                                 />
                               );
                             }
 
-                            // 일반 텍스트 줄 (빈 줄도 유지)
+                            // 2) 이모지 렌더
+                            const { normalized, nodes } = extractEmojiNodes(line, emojiImages);
+
+                            // ✅ 이모지 제거 후 빈 줄이면 렌더에서 스킵
+                            if (normalized.trim() === "") return null;
+
                             const isLast = idx === lines.length - 1;
+
                             return (
                               <React.Fragment key={`t-${idx}`}>
-                                <span className="whitespace-pre-wrap">{line}</span>
+                                <span className="whitespace-pre-wrap">{nodes}</span>
                                 {!isLast ? <br /> : null}
                               </React.Fragment>
                             );
