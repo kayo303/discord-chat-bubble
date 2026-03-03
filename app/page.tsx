@@ -9,7 +9,6 @@ import IdentityPanel from "@/components/IdentityPanel";
 
 import { parseDiscordPaste } from "@/lib/parse";
 import { THEMES, type ThemeKey } from "@/lib/themes";
-import type { Sticker } from "@/components/StickerLayer";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -20,14 +19,10 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function uid(prefix = "id") {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
-}
-
 export default function Page() {
   const [raw, setRaw] = useState("");
 
-  // 기존 옵션
+  // 옵션
   const [showTime, setShowTime] = useState(true);
   const [showDateDividers, setShowDateDividers] = useState(true);
   const [pixelRatio, setPixelRatio] = useState(2);
@@ -47,15 +42,12 @@ export default function Page() {
   // ✅ emoji 업로드 매핑
   const [emojiImages, setEmojiImages] = useState<Record<string, string>>({}); // name -> dataUrl
 
-  // ✅ 스티커
-  const [stickers, setStickers] = useState<Sticker[]>([]);
-
   // ✅ 테마
   const [themeKey, setThemeKey] = useState<ThemeKey>("dark");
   const theme = THEMES[themeKey];
 
   // ✅ 제목/상단
-  const [title, setTitle] = useState("대화 미리보기");
+  const [title, setTitle] = useState("대화 이미지");
   const [showHeaderBar, setShowHeaderBar] = useState(true);
 
   const captureRef = useRef<HTMLDivElement>(null);
@@ -81,9 +73,7 @@ export default function Page() {
     const set = new Set<string>();
     const re = /:([^\s:]+):/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(raw)) !== null) {
-      set.add(m[1]);
-    }
+    while ((m = re.exec(raw)) !== null) set.add(m[1]);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [raw]);
 
@@ -92,14 +82,10 @@ export default function Page() {
     const v = nameMap[author];
     return v && v.trim() ? v.trim() : author;
   };
-  const getAvatarUrl = (author: string) => {
-    return avatarMap[author] ?? null;
-  };
+  const getAvatarUrl = (author: string) => avatarMap[author] ?? null;
 
   // ✅ 사용자명 컬러
-  const getNameColor = (author: string) => {
-    return nameColorMap[author] ?? null;
-  };
+  const getNameColor = (author: string) => nameColorMap[author] ?? null;
 
   // 이름 변경
   function onChangeName(author: string, value: string) {
@@ -148,43 +134,11 @@ export default function Page() {
     });
   }
 
-  // ✅ 스티커 추가
-  async function addSticker(file: File) {
-    const url = await fileToDataUrl(file);
-
-    // 이미지 비율 대충 반영해서 높이 계산
-    const img = new Image();
-    img.src = url;
-    await new Promise((r) => {
-      img.onload = () => r(null);
-      img.onerror = () => r(null);
-    });
-
-    const ratio = img.width && img.height ? img.height / img.width : 1;
-    const w = 0.22; // 캔버스 기준 22%
-    const h = Math.min(0.6, w * ratio);
-
-    const s: Sticker = {
-      id: uid("sticker"),
-      dataUrl: url,
-      x: 0.65,
-      y: 0.1,
-      w,
-      h,
-    };
-    setStickers((prev) => [...prev, s]);
-  }
-
-  function clearStickers() {
-    setStickers([]);
-  }
-
   // PNG 다운로드
   async function downloadPng() {
     if (!captureRef.current) return;
 
     try {
-      // ✅ 캡처 모드: “빈 이미지 슬롯 숨김”, “스티커 편집 UI 숨김”
       setCaptureMode(true);
       await new Promise((r) => requestAnimationFrame(() => r(null)));
 
@@ -207,7 +161,6 @@ export default function Page() {
     }
   }
 
-  // 샘플
   function loadSample() {
     setRaw(`Saint — 2022-02-18 오전 6:30
 영원히 안녕. 나의 대발명가. :emoji:
@@ -226,11 +179,10 @@ export default function Page() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* 왼쪽: 입력/설정 */}
+        {/* 왼쪽 */}
         <div className="space-y-4">
           <PasteInput value={raw} onChange={setRaw} />
 
-          {/* 기존 IdentityPanel 그대로 사용 */}
           <IdentityPanel
             authors={authors}
             nameMap={nameMap}
@@ -240,13 +192,13 @@ export default function Page() {
             onRemoveAvatar={onRemoveAvatar}
           />
 
-          {/* ✅ 새 기능 패널: 제목/테마/닉네임색/이모지/스티커 */}
+          {/* 추가 커스텀 */}
           <div className="rounded-xl p-4" style={{ border: `1px solid ${theme.border}`, background: theme.panel }}>
             <div className="font-semibold mb-3" style={{ color: theme.text }}>
               추가 커스텀
             </div>
 
-            {/* 제목/상단 */}
+            {/* 제목/상단/테마 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="text-sm" style={{ color: theme.subtext }}>
                 이미지 제목
@@ -405,46 +357,6 @@ export default function Page() {
                 </div>
               )}
             </div>
-
-            {/* 스티커 */}
-            <div className="mt-5">
-              <div className="text-sm mb-2" style={{ color: theme.subtext }}>
-                스티커(캡처 영역 어디든 붙이기)
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) addSticker(f);
-                      e.currentTarget.value = "";
-                    }}
-                  />
-                  <span
-                    className="rounded-md px-3 py-2 text-xs"
-                    style={{ background: theme.hover, color: theme.text }}
-                  >
-                    스티커 추가
-                  </span>
-                </label>
-
-                <button
-                  type="button"
-                  className="rounded-md px-3 py-2 text-xs"
-                  style={{ background: theme.header, color: theme.subtext, border: `1px solid ${theme.border}` }}
-                  onClick={clearStickers}
-                >
-                  스티커 전체 삭제
-                </button>
-
-                <div className="ml-auto text-xs" style={{ color: theme.subtext }}>
-                  스티커는 미리보기에서 드래그로 이동 가능
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* 옵션/저장 */}
@@ -526,22 +438,9 @@ export default function Page() {
               팁) 너무 긴 대화는 PNG 생성에 실패할 수 있어요.
             </div>
           </div>
-
-          {/* 디버그 */}
-          <details className="rounded-xl p-4" style={{ border: `1px solid ${theme.border}`, background: theme.panel }}>
-            <summary className="cursor-pointer text-sm" style={{ color: theme.text }}>
-              파싱된 JSON 보기(디버그)
-            </summary>
-            <pre
-              className="mt-3 overflow-auto rounded-lg p-3 text-xs"
-              style={{ background: theme.header, border: `1px solid ${theme.border}`, color: theme.text }}
-            >
-              {JSON.stringify(messages, null, 2)}
-            </pre>
-          </details>
         </div>
 
-        {/* 오른쪽: 미리보기(캡처 대상) */}
+        {/* 오른쪽 */}
         <div>
           <div ref={captureRef}>
             <ChatPreview
@@ -556,8 +455,6 @@ export default function Page() {
               onUploadInlineImage={onUploadInlineImage}
               onRemoveInlineImage={onRemoveInlineImage}
               emojiImages={emojiImages}
-              stickers={stickers}
-              setStickers={setStickers}
               theme={theme}
               title={title}
               showHeaderBar={showHeaderBar}
