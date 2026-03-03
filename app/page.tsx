@@ -32,21 +32,21 @@ export default function Page() {
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
 
-  // ✅ 사용자명 색상
+  // ✅ 사용자명 색상 (IdentityPanel로 이동)
   const [nameColorMap, setNameColorMap] = useState<Record<string, string>>({}); // author -> hex
 
-  // ✅ inline 이미지 슬롯
+  // inline 이미지 슬롯
   const [inlineImages, setInlineImages] = useState<Record<string, string>>({}); // slotId -> dataUrl
   const [captureMode, setCaptureMode] = useState(false);
 
-  // ✅ emoji 업로드 매핑
+  // emoji 업로드 매핑
   const [emojiImages, setEmojiImages] = useState<Record<string, string>>({}); // name -> dataUrl
 
-  // ✅ 테마
+  // 테마
   const [themeKey, setThemeKey] = useState<ThemeKey>("dark");
   const theme = THEMES[themeKey];
 
-  // ✅ 제목/상단
+  // 제목/상단
   const [title, setTitle] = useState("대화 이미지");
   const [showHeaderBar, setShowHeaderBar] = useState(true);
 
@@ -68,7 +68,7 @@ export default function Page() {
     return "메시지를 인식하지 못했어요. 헤더 줄이 ‘작성자 — 2026-02-20 오전 12:39’ 형태인지 확인해주세요.";
   }, [raw, messages.length]);
 
-  // 원문에서 이모지 이름들 추출(:name:)
+  // 원문에서 이모지 이름 추출(:name:)
   const emojiNames = useMemo(() => {
     const set = new Set<string>();
     const re = /:([^\s:]+):/g;
@@ -84,7 +84,7 @@ export default function Page() {
   };
   const getAvatarUrl = (author: string) => avatarMap[author] ?? null;
 
-  // ✅ 사용자명 컬러
+  // 사용자명 컬러
   const getNameColor = (author: string) => nameColorMap[author] ?? null;
 
   // 이름 변경
@@ -97,7 +97,6 @@ export default function Page() {
     const url = await fileToDataUrl(file);
     setAvatarMap((prev) => ({ ...prev, [author]: url }));
   }
-
   function onRemoveAvatar(author: string) {
     setAvatarMap((prev) => {
       const next = { ...prev };
@@ -106,12 +105,23 @@ export default function Page() {
     });
   }
 
-  // ✅ inline 이미지 업로드/삭제
+  // ✅ 이름 색상 변경/리셋
+  function onChangeNameColor(author: string, hex: string) {
+    setNameColorMap((prev) => ({ ...prev, [author]: hex }));
+  }
+  function onResetNameColor(author: string) {
+    setNameColorMap((prev) => {
+      const next = { ...prev };
+      delete next[author];
+      return next;
+    });
+  }
+
+  // inline 이미지 업로드/삭제
   async function onUploadInlineImage(slotId: string, file: File) {
     const url = await fileToDataUrl(file);
     setInlineImages((prev) => ({ ...prev, [slotId]: url }));
   }
-
   function onRemoveInlineImage(slotId: string) {
     setInlineImages((prev) => {
       const next = { ...prev };
@@ -120,12 +130,11 @@ export default function Page() {
     });
   }
 
-  // ✅ emoji 업로드/삭제
+  // emoji 업로드/삭제
   async function onUploadEmoji(name: string, file: File) {
     const url = await fileToDataUrl(file);
     setEmojiImages((prev) => ({ ...prev, [name]: url }));
   }
-
   function onRemoveEmoji(name: string) {
     setEmojiImages((prev) => {
       const next = { ...prev };
@@ -163,8 +172,12 @@ export default function Page() {
 
   function loadSample() {
     setRaw(`Saint — 2022-02-18 오전 6:30
-영원히 안녕. 나의 대발명가. :emoji:
-이미지`);
+영원히 안녕. 나의 대발명가.
+:emoji:
+이미지
+이 문장에는 :emoji: 이모지가 있어.
+:emoji: :emoji:
+그리고 끝.`);
   }
 
   return (
@@ -181,24 +194,33 @@ export default function Page() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 왼쪽 */}
         <div className="space-y-4">
+          {/* 1) 입력 */}
           <PasteInput value={raw} onChange={setRaw} />
 
+          {/* 2) 이름/프로필 + 이름색상 (테마 적용된 IdentityPanel) */}
           <IdentityPanel
             authors={authors}
             nameMap={nameMap}
             avatarMap={avatarMap}
+            nameColorMap={nameColorMap}
             onChangeName={onChangeName}
             onUploadAvatar={onUploadAvatar}
             onRemoveAvatar={onRemoveAvatar}
+            onChangeNameColor={onChangeNameColor}
+            onResetNameColor={onResetNameColor}
+            theme={theme}
+            getDisplayName={getDisplayName}
           />
 
-          {/* 추가 커스텀 */}
-          <div className="rounded-xl p-4" style={{ border: `1px solid ${theme.border}`, background: theme.panel }}>
-            <div className="font-semibold mb-3" style={{ color: theme.text }}>
-              추가 커스텀
+          {/* 3) 화면/테마/제목 */}
+          <div
+            className="rounded-xl p-4"
+            style={{ border: `1px solid ${theme.border}`, background: theme.panel }}
+          >
+            <div className="text-sm font-semibold mb-3" style={{ color: theme.text }}>
+              화면 설정
             </div>
 
-            {/* 제목/상단/테마 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="text-sm" style={{ color: theme.subtext }}>
                 이미지 제목
@@ -215,153 +237,38 @@ export default function Page() {
                 />
               </label>
 
-              <div className="flex items-end gap-3">
-                <label className="flex items-center gap-2 text-sm" style={{ color: theme.text }}>
-                  <input
-                    type="checkbox"
-                    className="accent-[#5865F2]"
-                    checked={showHeaderBar}
-                    onChange={(e) => setShowHeaderBar(e.target.checked)}
-                  />
-                  상단바 표시
-                </label>
-
-                <label className="text-sm ml-auto" style={{ color: theme.subtext }}>
-                  테마
-                  <select
-                    className="mt-1 w-full rounded-md px-2 py-2 text-sm outline-none"
-                    style={{
-                      background: theme.header,
-                      border: `1px solid ${theme.border}`,
-                      color: theme.text,
-                    }}
-                    value={themeKey}
-                    onChange={(e) => setThemeKey(e.target.value as ThemeKey)}
-                  >
-                    {Object.values(THEMES).map((t) => (
-                      <option key={t.key} value={t.key}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </div>
-
-            {/* 사용자명 색 */}
-            <div className="mt-4">
-              <div className="text-sm mb-2" style={{ color: theme.subtext }}>
-                사용자명 색상
-              </div>
-              {authors.length === 0 ? (
-                <div className="text-xs" style={{ color: theme.subtext }}>
-                  작성자가 감지되면 여기서 색을 지정할 수 있어요.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {authors.map((a) => (
-                    <div key={a} className="flex items-center gap-3">
-                      <div className="text-sm" style={{ color: theme.text, minWidth: 140 }}>
-                        {getDisplayName(a)}
-                      </div>
-                      <input
-                        type="color"
-                        value={nameColorMap[a] ?? "#ffffff"}
-                        onChange={(e) => setNameColorMap((p) => ({ ...p, [a]: e.target.value }))}
-                        className="h-8 w-12 rounded"
-                        title="이름 색상 선택"
-                      />
-                      <button
-                        type="button"
-                        className="text-xs hover:underline"
-                        style={{ color: theme.subtext }}
-                        onClick={() =>
-                          setNameColorMap((p) => {
-                            const n = { ...p };
-                            delete n[a];
-                            return n;
-                          })
-                        }
-                      >
-                        기본값으로
-                      </button>
-                    </div>
+              <label className="text-sm" style={{ color: theme.subtext }}>
+                테마
+                <select
+                  className="mt-1 w-full rounded-md px-2 py-2 text-sm outline-none"
+                  style={{
+                    background: theme.header,
+                    border: `1px solid ${theme.border}`,
+                    color: theme.text,
+                  }}
+                  value={themeKey}
+                  onChange={(e) => setThemeKey(e.target.value as ThemeKey)}
+                >
+                  {Object.values(THEMES).map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </label>
             </div>
 
-            {/* 이모지 업로드 */}
-            <div className="mt-5">
-              <div className="text-sm mb-2" style={{ color: theme.subtext }}>
-                이모티콘 업로드 매핑 (:이름:)
-              </div>
-              {emojiNames.length === 0 ? (
-                <div className="text-xs" style={{ color: theme.subtext }}>
-                  텍스트에 :이모지이름: 형식이 있으면 자동으로 목록이 생겨요.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {emojiNames.map((name) => {
-                    const url = emojiImages[name];
-                    return (
-                      <div
-                        key={name}
-                        className="flex items-center gap-3 rounded-lg px-2 py-2"
-                        style={{ background: theme.header, border: `1px solid ${theme.border}` }}
-                      >
-                        <div className="text-sm" style={{ color: theme.text, minWidth: 160 }}>
-                          :{name}:
-                        </div>
+            <div className="mt-3 flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm" style={{ color: theme.text }}>
+                <input
+                  type="checkbox"
+                  className="accent-[#5865F2]"
+                  checked={showHeaderBar}
+                  onChange={(e) => setShowHeaderBar(e.target.checked)}
+                />
+                상단바 표시
+              </label>
 
-                        {url ? (
-                          <img src={url} alt={name} style={{ width: 22, height: 22 }} />
-                        ) : (
-                          <div className="text-xs" style={{ color: theme.subtext }}>
-                            업로드 없음 → 출력 시 자동 삭제
-                          </div>
-                        )}
-
-                        <label className="ml-auto cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) onUploadEmoji(name, f);
-                              e.currentTarget.value = "";
-                            }}
-                          />
-                          <span
-                            className="rounded-md px-3 py-2 text-xs"
-                            style={{ background: theme.hover, color: theme.text }}
-                          >
-                            업로드
-                          </span>
-                        </label>
-
-                        {url && (
-                          <button
-                            type="button"
-                            className="text-xs hover:underline"
-                            style={{ color: "#F23F43" }}
-                            onClick={() => onRemoveEmoji(name)}
-                          >
-                            제거
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 옵션/저장 */}
-          <div className="rounded-xl p-4" style={{ border: `1px solid ${theme.border}`, background: theme.panel }}>
-            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm" style={{ color: theme.text }}>
                 <input
                   type="checkbox"
@@ -391,7 +298,86 @@ export default function Page() {
                 />
                 아바타 표시
               </label>
+            </div>
+          </div>
 
+          {/* 4) 이모지 업로드 매핑 */}
+          <div
+            className="rounded-xl p-4"
+            style={{ border: `1px solid ${theme.border}`, background: theme.panel }}
+          >
+            <div className="text-sm font-semibold mb-3" style={{ color: theme.text }}>
+              이모티콘 업로드 매핑 (:이름:)
+            </div>
+
+            {emojiNames.length === 0 ? (
+              <div className="text-xs" style={{ color: theme.subtext }}>
+                텍스트에 :이모지이름: 형식이 있으면 자동으로 목록이 생겨요.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {emojiNames.map((name) => {
+                  const url = emojiImages[name];
+                  return (
+                    <div
+                      key={name}
+                      className="flex items-center gap-3 rounded-lg px-2 py-2"
+                      style={{ background: theme.header, border: `1px solid ${theme.border}` }}
+                    >
+                      <div className="text-sm" style={{ color: theme.text, minWidth: 160 }}>
+                        :{name}:
+                      </div>
+
+                      {url ? (
+                        <img src={url} alt={name} style={{ width: 22, height: 22 }} />
+                      ) : (
+                        <div className="text-xs" style={{ color: theme.subtext }}>
+                          업로드 없음 → 출력 시 자동 삭제
+                        </div>
+                      )}
+
+                      <label className="ml-auto cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) onUploadEmoji(name, f);
+                            e.currentTarget.value = "";
+                          }}
+                        />
+                        <span
+                          className="rounded-md px-3 py-2 text-xs"
+                          style={{ background: theme.hover, color: theme.text }}
+                        >
+                          업로드
+                        </span>
+                      </label>
+
+                      {url && (
+                        <button
+                          type="button"
+                          className="text-xs hover:underline"
+                          style={{ color: "#F23F43" }}
+                          onClick={() => onRemoveEmoji(name)}
+                        >
+                          제거
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 5) 저장 */}
+          <div
+            className="rounded-xl p-4"
+            style={{ border: `1px solid ${theme.border}`, background: theme.panel }}
+          >
+            <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-2 text-sm" style={{ color: theme.text }}>
                 PNG 품질
                 <select
@@ -432,7 +418,11 @@ export default function Page() {
               </div>
             </div>
 
-            {parseHint && <div className="mt-3 text-sm" style={{ color: "#F23F43" }}>{parseHint}</div>}
+            {parseHint && (
+              <div className="mt-3 text-sm" style={{ color: "#F23F43" }}>
+                {parseHint}
+              </div>
+            )}
 
             <div className="mt-3 text-xs" style={{ color: theme.subtext }}>
               팁) 너무 긴 대화는 PNG 생성에 실패할 수 있어요.
@@ -450,10 +440,19 @@ export default function Page() {
               showAvatars={showAvatars}
               getDisplayName={getDisplayName}
               getAvatarUrl={getAvatarUrl}
-              getNameColor={getNameColor}
+              getNameColor={(a) => nameColorMap[a] ?? null}
               inlineImages={inlineImages}
-              onUploadInlineImage={onUploadInlineImage}
-              onRemoveInlineImage={onRemoveInlineImage}
+              onUploadInlineImage={async (slotId, file) => {
+                const url = await fileToDataUrl(file);
+                setInlineImages((prev) => ({ ...prev, [slotId]: url }));
+              }}
+              onRemoveInlineImage={(slotId) => {
+                setInlineImages((prev) => {
+                  const next = { ...prev };
+                  delete next[slotId];
+                  return next;
+                });
+              }}
               emojiImages={emojiImages}
               theme={theme}
               title={title}
