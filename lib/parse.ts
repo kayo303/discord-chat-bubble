@@ -1,57 +1,117 @@
 export type ParsedMessage = {
   author: string;
-  datetime: string; // ISO-ish with +09:00
-  date: string; // YYYY-MM-DD
-  rawTime: string; // "오전 12:39"
+  date: string;      // YYYY-MM-DD
+  rawTime: string;   // "오전 1:02" / "오후 12:39"
+  datetime: string;  // ISO-like key
   content: string;
 };
 
-function to24Hour(meridiem: "오전" | "오후", hh: string): number {
-  let hour = Number(hh);
-  if (meridiem === "오전") {
-    if (hour === 12) hour = 0;
-  } else {
-    if (hour !== 12) hour += 12;
-  }
-  return hour;
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
 }
 
-export function parseDiscordPaste(text: string): ParsedMessage[] {
-  const headerRe =
-    /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}):(\d{2})\s*$/;
+function todayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
+function normalizeTimeKor(raw: string) {
+  // "오전 1:02" / "오후 12:39" -> { hh24, mm, rawTime }
+  const m = raw.match(/^(오전|오후)\s*(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const ap = m[1];
+  let hh = Number(m[2]);
+  const mm = Number(m[3]);
+  if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
 
-  const messages: ParsedMessage[] = [];
-  let current: ParsedMessage | null = null;
+  // 12시간 -> 24시간
+  if (ap === "오전") {
+    if (hh === 12) hh = 0;
+  } else {
+    if (hh !== 12) hh += 12;
+  }
+  return { hh24: hh, mm, rawTime: `${ap} ${m[2]}:${m[3]}` };
+}
 
-  const pushCurrent = () => {
-    if (!current) return;
-    current.content = current.content.replace(/\n+$/g, "");
-    if (current.content.trim().length > 0) messages.push(current);
-    current = null;
-  };
+export function parseDiscordPaste(input: string): ParsedMessage[] {
+  const lines = input.replace(/\r\n/g, "\n").split("\n");
+
+  // ✅ 헤더 2종 지원
+  // 1) 작성자 — 2026-02-20 오후 1:02
+  const withDate = /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
+  // 2) 작성자 — 오후 1:02  (당일/날짜 생략)
+  const timeOnly = /^(.+?)\s*—\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
+
+  const out: ParsedMessage[] = [];
+  let current: Omit<ParsedMessage, "content"> & { contentLines: string[] } | null = null;
 
   for (const line of lines) {
-    const m = line.match(headerRe);
-    if (m) {
-      pushCurrent();
+    const l = line.trimEnd();
 
-      const [, authorRaw, date, meridiemRaw, hh, mm] = m;
-      const author = authorRaw.trim();
-      const meridiem = meridiemRaw as "오전" | "오후";
-      const hour24 = to24Hour(meridiem, hh);
+    let author: string | null = null;
+    let date: string | null = null;
+    let rawTime: string | null = null;
 
-      const datetime = `${date}T${String(hour24).padStart(2, "0")}:${mm}:00+09:00`;
-      const rawTime = `${meridiem} ${Number(hh)}:${mm}`;
+    const m1 = l.match(withDate);
+    if (m1) {
+      author = m1[1].trim();
+      date = m1[2];
+      rawTime = `${m1[3]} ${m1[4]}`;
+    } else {
+      const m2 = l.match(timeOnly);
+      if (m2) {
+        author = m2[1].trim();
+        date = todayYmd(); // ✅ 날짜 없으면 "오늘"로 채움
+        rawTime = `${m2[2]} ${m2[3]}`;
+      }
+    }
 
-      current = { author, datetime, date, rawTime, content: "" };
+    const isHeader = !!(author && date && rawTime);
+
+    if (isHeader) {
+      // 이전 메시지 저장
+      if (current) {
+        out.push({
+          author: current.author,
+          date: current.date,
+          rawTime: current.rawTime,
+          datetime: current.datetime,
+          content: current.contentLines.join("\n").trimEnd(),
+        });
+      }
+
+      const t = normalizeTimeKor(rawTime!);
+      if (!t) continue;
+
+      const dtKey = `${date}T${pad2(t.hh24)}:${pad2(t.mm)}:00`;
+
+      current = {
+        author: author!,
+        date: date!,
+        rawTime: rawTime!,
+        datetime: dtKey,
+        contentLines: [],
+      };
       continue;
     }
 
-    if (current) current.content += (current.content ? "\n" : "") + line;
+    // 헤더가 아닌 줄: 현재 메시지 본문으로 붙이기
+    if (current) {
+      current.contentLines.push(l);
+    }
   }
 
-  pushCurrent();
-  return messages;
+  // 마지막 메시지 저장
+  if (current) {
+    out.push({
+      author: current.author,
+      date: current.date,
+      rawTime: current.rawTime,
+      datetime: current.datetime,
+      content: current.contentLines.join("\n").trimEnd(),
+    });
+  }
+
+  // 빈 내용 제거(원하면 유지해도 됨)
+  return out.filter((m) => m.author && m.date && m.rawTime && m.content.length > 0);
 }
