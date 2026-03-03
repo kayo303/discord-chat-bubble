@@ -46,7 +46,7 @@ export default function Page() {
     const parseHint = useMemo(() => {
         if (!raw.trim()) return "";
         if (messages.length > 0) return "";
-        return "메시지를 인식하지 못했어요. 헤더 줄이 ‘작성자 — 2026-02-20 오전 12:39’ 형태인지 확인해줘!";
+        return "메시지를 인식하지 못했어요. 헤더 줄이 ‘작성자 — 2026-02-20 오전 12:39’ 형태인지 확인해주세요.";
     }, [raw, messages.length]);
 
     // 표시 이름/아바타 조회 함수
@@ -94,7 +94,7 @@ export default function Page() {
             a.click();
         } catch (e) {
             alert(
-                "이미지 저장에 실패했어. (브라우저가 차단했거나, 내용이 너무 길 수 있어)\n\n" +
+                "이미지 저장에 실패했어요. (브라우저가 차단했거나, 내용이 너무 길 수 있어요)\n\n" +
                 String(e)
             );
         }
@@ -202,7 +202,7 @@ export default function Page() {
                         {parseHint && <div className="mt-3 text-sm text-[#F23F43]">{parseHint}</div>}
 
                         <div className="mt-3 text-xs text-[#949BA4]">
-                            팁) 너무 긴 대화는 PNG 생성이 실패할 수 있어요. 그럴 땐 대화를 나눠서 저장해줘!
+                            팁) 너무 긴 대화는 PNG 생성에 실패할 수 있어요.
                         </div>
                     </div>
 
