@@ -25,9 +25,10 @@ export type ThemeVars = {
 };
 
 export const THEMES: Record<ThemeKey, ThemeVars> = {
+  // ✅ 블랙(유지)
   dark: {
     key: "dark",
-    label: "Dark (기본)",
+    label: "Black (기본)",
     bg: "#0B0D10",
     panel: "#313338",
     header: "#2B2D31",
@@ -38,6 +39,7 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#949BA4",
   },
 
+  // ✅ 화이트(유지)
   white: {
     key: "white",
     label: "White",
@@ -51,48 +53,10 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#6B7280",
   },
 
-  pink: {
-    key: "pink",
-    label: "Pink",
-    bg: "#1A0F14",
-    panel: "#2A1620",
-    header: "#23131B",
-    border: "#3A2230",
-    hover: "#23131B",
-    divider: "#3A2230",
-    text: "#FFF7FB",
-    subtext: "#D6A8BF",
-  },
-
-  blue: {
-    key: "blue",
-    label: "Blue",
-    bg: "#0A1220",
-    panel: "#111C2E",
-    header: "#0E1727",
-    border: "#1E2A43",
-    hover: "#0E1727",
-    divider: "#1E2A43",
-    text: "#EAF2FF",
-    subtext: "#9FB4D4",
-  },
-
-  green: {
-    key: "green",
-    label: "Green",
-    bg: "#071510",
-    panel: "#0F231A",
-    header: "#0B1C15",
-    border: "#163626",
-    hover: "#0B1C15",
-    divider: "#163626",
-    text: "#E8FFF2",
-    subtext: "#A6D7BE",
-  },
-
+  // ✅ 옐로우(유지: 밝은 계열)
   yellow: {
     key: "yellow",
-    label: "Yellow",
+    label: "Yellow (Pastel)",
     bg: "#FFF7E6",
     panel: "#FFFFFF",
     header: "#FFF3D1",
@@ -103,42 +67,87 @@ export const THEMES: Record<ThemeKey, ThemeVars> = {
     subtext: "#6B7280",
   },
 
-  red: {
-    key: "red",
-    label: "Red",
-    bg: "#17080B",
-    panel: "#261014",
-    header: "#1F0D10",
-    border: "#3B1920",
-    hover: "#1F0D10",
-    divider: "#3B1920",
-    text: "#FFF2F3",
-    subtext: "#D8A0A7",
+  // 🌸 파스텔 핑크 (전면 교체)
+  pink: {
+    key: "pink",
+    label: "Pink (Pastel)",
+    bg: "#F7E9EE",
+    panel: "#F3DCE4",
+    header: "#F7EFF3",
+    border: "#E6C6D1",
+    hover: "#EFD2DC",
+    divider: "#E6C6D1",
+    text: "#1A1A1A",
+    subtext: "#5F5F5F",
   },
 
-  purple: {
-    key: "purple",
-    label: "Purple",
-    bg: "#100A1A",
-    panel: "#1B1230",
-    header: "#150E26",
-    border: "#2B1F4B",
-    hover: "#150E26",
-    divider: "#2B1F4B",
-    text: "#F6F0FF",
-    subtext: "#B9A7DD",
+  // 🫐 파스텔 블루 (전면 교체)
+  blue: {
+    key: "blue",
+    label: "Blue (Pastel)",
+    bg: "#EAF3F9",
+    panel: "#DDEBF6",
+    header: "#F2F8FC",
+    border: "#C7DAEB",
+    hover: "#D2E4F2",
+    divider: "#C7DAEB",
+    text: "#1A1A1A",
+    subtext: "#5F6B75",
   },
 
+  // 🌿 파스텔 그린 (전면 교체)
+  green: {
+    key: "green",
+    label: "Green (Pastel)",
+    bg: "#ECF6F1",
+    panel: "#DFF0E7",
+    header: "#F3FAF7",
+    border: "#C9E4D6",
+    hover: "#D4EBDD",
+    divider: "#C9E4D6",
+    text: "#1A1A1A",
+    subtext: "#5F6F65",
+  },
+
+  // 🍑 파스텔 오렌지/피치 (전면 교체)
   orange: {
     key: "orange",
-    label: "Orange",
-    bg: "#160E08",
-    panel: "#261A12",
-    header: "#1F140D",
-    border: "#3A2618",
-    hover: "#1F140D",
-    divider: "#3A2618",
-    text: "#FFF6EF",
-    subtext: "#D7B09B",
+    label: "Orange (Pastel)",
+    bg: "#FAEFE6",
+    panel: "#F4E0D2",
+    header: "#FDF6F0",
+    border: "#E8C9B4",
+    hover: "#EFD6C6",
+    divider: "#E8C9B4",
+    text: "#1A1A1A",
+    subtext: "#6B5B4F",
+  },
+
+  // 🪻 파스텔 퍼플/라벤더 (전면 교체)
+  purple: {
+    key: "purple",
+    label: "Purple (Pastel)",
+    bg: "#F1EDF8",
+    panel: "#E5DFF4",
+    header: "#F7F5FC",
+    border: "#D3C7EB",
+    hover: "#DCD3F0",
+    divider: "#D3C7EB",
+    text: "#1A1A1A",
+    subtext: "#655E74",
+  },
+
+  // ❤️ 파스텔 레드/로제 (전면 교체)
+  red: {
+    key: "red",
+    label: "Red (Pastel)",
+    bg: "#F8ECEC",
+    panel: "#F2DCDC",
+    header: "#FBF3F3",
+    border: "#E4C5C5",
+    hover: "#EBCFCF",
+    divider: "#E4C5C5",
+    text: "#1A1A1A",
+    subtext: "#6A5555",
   },
 };
