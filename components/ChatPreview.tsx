@@ -4,7 +4,6 @@ import React, { useMemo } from "react";
 import type { ParsedMessage } from "@/lib/parse";
 import { hashStringToHsl, initials } from "@/lib/color";
 import type { ThemeVars } from "@/lib/themes";
-import StickerLayer, { type Sticker } from "@/components/StickerLayer";
 
 type Props = {
   messages: ParsedMessage[];
@@ -26,10 +25,6 @@ type Props = {
   // ✅ emoji images (:name: -> image)
   emojiImages: Record<string, string | undefined>; // name -> dataUrl
 
-  // ✅ 스티커
-  stickers: Sticker[];
-  setStickers: (next: Sticker[]) => void;
-
   // ✅ 테마
   theme: ThemeVars;
 
@@ -47,16 +42,10 @@ function formatDateKor(yyyy_mm_dd: string) {
   return `${y}년 ${m}월 ${d}일`;
 }
 
-/**
- * ✅ 연속 메시지(같은 author + 같은 date)를 하나의 블록으로 합침
- * - content는 "\n"로 이어붙임
- * - rawTime/datetime는 "첫 메시지" 기준 유지
- */
 function mergeConsecutive(messages: ParsedMessage[]): ParsedMessage[] {
   const out: ParsedMessage[] = [];
   for (const cur of messages) {
     const last = out[out.length - 1];
-
     const canMerge = last && last.author === cur.author && last.date === cur.date;
 
     if (canMerge) {
@@ -74,36 +63,27 @@ function getImgSlotId(line: string): string | null {
 }
 
 function InlineImageSlot({
-  slotId,
   dataUrl,
   onUpload,
   onRemove,
   captureMode,
   theme,
 }: {
-  slotId: string;
   dataUrl?: string;
   onUpload: (file: File) => void;
   onRemove: () => void;
   captureMode: boolean;
   theme: ThemeVars;
 }) {
-  // ✅ 캡처 모드에서는 “빈 슬롯”은 아예 렌더링 안 함
   if (captureMode && !dataUrl) return null;
 
   return (
     <div className="my-2">
       {dataUrl ? (
-        <div
-          className="rounded-lg overflow-hidden"
-          style={{ border: `1px solid ${theme.border}` }}
-        >
+        <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${theme.border}` }}>
           <img src={dataUrl} alt="inline" className="max-w-full h-auto block" />
           {!captureMode && (
-            <div
-              className="p-2 flex justify-end"
-              style={{ background: theme.header }}
-            >
+            <div className="p-2 flex justify-end" style={{ background: theme.header }}>
               <button
                 className="text-xs hover:underline"
                 style={{ color: "#F23F43" }}
@@ -135,10 +115,7 @@ function InlineImageSlot({
                   e.currentTarget.value = "";
                 }}
               />
-              <span
-                className="rounded-md px-3 py-2 text-xs"
-                style={{ background: theme.hover, color: theme.text }}
-              >
+              <span className="rounded-md px-3 py-2 text-xs" style={{ background: theme.hover, color: theme.text }}>
                 이미지 업로드
               </span>
             </label>
@@ -150,9 +127,7 @@ function InlineImageSlot({
 }
 
 function extractEmojiNodes(line: string, emojiImages: Record<string, string | undefined>) {
-  // 1) 업로드 없는 이모지는 제거
-  // 2) 업로드 있는 이모지는 이미지로 렌더
-  // 3) 제거 후 공백 과다 정리
+  // 업로드 없는 이모지는 제거(텍스트만 제거, 주변 텍스트는 유지)
   const tokens = line.match(/:[^\s:]+:/g) ?? [];
   let normalized = line;
   for (const t of tokens) {
@@ -163,7 +138,6 @@ function extractEmojiNodes(line: string, emojiImages: Record<string, string | un
   }
   normalized = normalized.replace(/[ \t]{2,}/g, " ").trimEnd();
 
-  // “토큰만 있던 줄”이면 빈 줄 될 수 있음 -> 호출부에서 skip
   const parts: React.ReactNode[] = [];
   const re = /:([^\s:]+):/g;
 
@@ -191,7 +165,6 @@ function extractEmojiNodes(line: string, emojiImages: Record<string, string | un
         />
       );
     } else {
-      // 업로드 없는 이모지는 이미 제거했지만 안전장치
       parts.push("");
     }
 
@@ -212,28 +185,20 @@ export default function ChatPreview({
   getDisplayName,
   getAvatarUrl,
   getNameColor,
-
   inlineImages,
   onUploadInlineImage,
   onRemoveInlineImage,
-
   emojiImages,
-
-  stickers,
-  setStickers,
-
   theme,
-
   title,
   showHeaderBar,
-
   captureMode,
 }: Props) {
   const merged = useMemo(() => mergeConsecutive(messages), [messages]);
 
   return (
     <div
-      className="rounded-xl overflow-hidden relative"
+      className="rounded-xl overflow-hidden"
       style={{
         border: `1px solid ${theme.border}`,
         background: theme.panel,
@@ -241,27 +206,20 @@ export default function ChatPreview({
       }}
     >
       {showHeaderBar && (
-        <div
-          className="px-4 py-3 border-b"
-          style={{ borderColor: theme.border, background: theme.header }}
-        >
+        <div className="px-4 py-3 border-b" style={{ borderColor: theme.border, background: theme.header }}>
           <div className="text-sm" style={{ color: theme.subtext }}>
             {title?.trim() ? title.trim() : "미리보기"}
           </div>
         </div>
       )}
 
-      {/* ✅ 캡처 영역(스티커가 “이미지 범위 안 어디든” 붙도록) */}
-      <div className="p-2 sm:p-4 relative">
-        {/* 스티커 레이어 */}
-        <StickerLayer stickers={stickers} setStickers={setStickers} captureMode={captureMode} />
-
+      <div className="p-2 sm:p-4">
         {merged.length === 0 ? (
           <div className="p-8 text-center" style={{ color: theme.subtext }}>
             왼쪽에 디스코드 대화를 붙여넣으면 여기에 Discord 스타일로 표시돼요.
           </div>
         ) : (
-          <div className="space-y-1 relative">
+          <div className="space-y-1">
             {merged.map((m, i) => {
               const prev = merged[i - 1];
               const isNewDate = !prev || prev.date !== m.date;
@@ -295,7 +253,6 @@ export default function ChatPreview({
                     }}
                   >
                     <div className="flex gap-3">
-                      {/* Avatar */}
                       {showAvatars ? (
                         <div className="w-10 shrink-0">
                           {avatarUrl ? (
@@ -318,13 +275,9 @@ export default function ChatPreview({
                         </div>
                       ) : null}
 
-                      {/* Content */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2">
-                          <div
-                            className="font-semibold"
-                            style={{ color: nameColor ?? theme.text }}
-                          >
+                          <div className="font-semibold" style={{ color: nameColor ?? theme.text }}>
                             {displayName}
                           </div>
                           {showTime && (
@@ -336,13 +289,11 @@ export default function ChatPreview({
 
                         <div className="text-[15px] leading-relaxed break-words mt-0.5">
                           {lines.map((line, idx) => {
-                            // 1) 이미지 슬롯
                             const slotId = getImgSlotId(line);
                             if (slotId) {
                               return (
                                 <InlineImageSlot
                                   key={`img-${slotId}-${idx}`}
-                                  slotId={slotId}
                                   dataUrl={inlineImages[slotId]}
                                   onUpload={(file) => onUploadInlineImage(slotId, file)}
                                   onRemove={() => onRemoveInlineImage(slotId)}
@@ -352,14 +303,10 @@ export default function ChatPreview({
                               );
                             }
 
-                            // 2) 이모지 렌더
                             const { normalized, nodes } = extractEmojiNodes(line, emojiImages);
-
-                            // ✅ 이모지 제거 후 빈 줄이면 렌더에서 스킵
                             if (normalized.trim() === "") return null;
 
                             const isLast = idx === lines.length - 1;
-
                             return (
                               <React.Fragment key={`t-${idx}`}>
                                 <span className="whitespace-pre-wrap">{nodes}</span>
