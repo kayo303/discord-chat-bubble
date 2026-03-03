@@ -69,8 +69,54 @@ function cleanContent(raw: string) {
   return cleaned.join("\n").trimEnd();
 }
 
+/**
+ * ✅ Discord 복붙에서 "뱃지/역할" 때문에 헤더가 줄바꿈되는 케이스 처리
+ * 예)
+ *   동동 모펭
+ *   (빈줄 가능)
+ *   — 2026-03-01 오후 2:40
+ * => "동동 모펭 — 2026-03-01 오후 2:40" 로 합쳐줌
+ */
+function normalizeHeaderLineBreaks(input: string) {
+  const rawLines = input.replace(/\r\n/g, "\n").split("\n");
+  const out: string[] = [];
+
+  const isDashHeaderLine = (s: string) =>
+    /^—\s*(\d{4}-\d{2}-\d{2}\s*(오전|오후)\s*\d{1,2}:\d{2}|어제\s*(오전|오후)\s*\d{1,2}:\d{2}|(오전|오후)\s*\d{1,2}:\d{2})\s*$/.test(
+      s.trim()
+    );
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i].trimEnd();
+
+    // 작성자 후보 라인(빈 줄은 제외)
+    if (line.trim() !== "") {
+      // 다음 "비어있지 않은 줄"을 찾기 (중간 공백 줄은 스킵)
+      let j = i + 1;
+      while (j < rawLines.length && rawLines[j].trim() === "") j++;
+
+      if (j < rawLines.length) {
+        const next = rawLines[j].trimEnd();
+
+        // 다음 줄이 "— 날짜/어제/시간" 형태면, 현재 줄 + 다음 줄을 합쳐서 헤더로 만든다
+        if (isDashHeaderLine(next)) {
+          out.push(`${line.trim()} ${next.trim()}`); // "작성자 — ..."
+          i = j; // 다음 줄까지 소비
+          continue;
+        }
+      }
+    }
+
+    out.push(line);
+  }
+
+  return out.join("\n");
+}
+
 export function parseDiscordPaste(input: string): ParsedMessage[] {
-  const lines = input.replace(/\r\n/g, "\n").split("\n");
+  // ✅ 1) 먼저 헤더 줄바꿈(뱃지 케이스) 정규화
+  const normalizedInput = normalizeHeaderLineBreaks(input);
+  const lines = normalizedInput.replace(/\r\n/g, "\n").split("\n");
 
   // ✅ 헤더 지원
   // 1) 작성자 — 2026-02-20 오후 1:02
@@ -80,7 +126,7 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
   // 2) 작성자 — 오후 1:02  (오늘)
   const timeOnly = /^(.+?)\s*—\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
 
-  // ✅ 3) 작성자 — 어제 오전 2:10 (어제)
+  // 3) 작성자 — 어제 오전 2:10 (어제)
   const yesterdayOnly = /^(.+?)\s*—\s*(어제)\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
 
   const out: ParsedMessage[] = [];
@@ -105,13 +151,13 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
       const m3 = l.match(yesterdayOnly);
       if (m3) {
         author = m3[1].trim();
-        date = yesterdayYmd(); // ✅ "어제"면 어제 날짜 적용
+        date = yesterdayYmd();
         rawTime = `${m3[3]} ${m3[4]}`;
       } else {
         const m2 = l.match(timeOnly);
         if (m2) {
           author = m2[1].trim();
-          date = todayYmd(); // ✅ 날짜 없으면 "오늘"
+          date = todayYmd();
           rawTime = `${m2[2]} ${m2[3]}`;
         }
       }
