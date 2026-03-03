@@ -16,15 +16,14 @@ function todayYmd() {
 }
 
 function normalizeTimeKor(raw: string) {
-  // "오전 1:02" / "오후 12:39" -> { hh24, mm, rawTime }
   const m = raw.match(/^(오전|오후)\s*(\d{1,2}):(\d{2})$/);
   if (!m) return null;
+
   const ap = m[1];
   let hh = Number(m[2]);
   const mm = Number(m[3]);
   if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
 
-  // 12시간 -> 24시간
   if (ap === "오전") {
     if (hh === 12) hh = 0;
   } else {
@@ -33,44 +32,42 @@ function normalizeTimeKor(raw: string) {
   return { hh24: hh, mm, rawTime: `${ap} ${m[2]}:${m[3]}` };
 }
 
-function cleanContent(raw: string) {
-  // 줄 단위로 처리
-  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+function isImgTokenLine(line: string) {
+  return /^\[\[IMG:[^\]]+\]\]$/.test(line.trim());
+}
 
-  const cleanedLines: string[] = [];
+function cleanContent(raw: string) {
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const cleaned: string[] = [];
 
   for (let line of lines) {
-    // ✅ "이미지"라는 원문 줄은 이제 파서에서 [[IMG:...]] 로 바뀌므로
-    // 여기서는 굳이 안 만져도 되지만, 혹시 남아있을 경우 안전하게 삭제
+    // 원문 "이미지" 줄은 이제 parse 단계에서 [[IMG:...]]로 바뀌지만, 혹시 남아있으면 삭제
     if (line.trim() === "이미지") continue;
 
-    // ✅ 이미지 토큰은 유지
-    const isImgToken = /^\[\[IMG:[^\]]+\]\]$/.test(line.trim());
-    if (!isImgToken) {
-      // 2) :emoji_name: 토큰 제거 (여러 개 가능)
-      line = line.replace(/:[^\s:]+:/g, "");
-
-      // 토큰 지운 뒤에 남은 공백 정리
-      line = line.replace(/[ \t]+/g, " ").trimEnd();
-
-      // 토큰만 있던 줄이면 빈 줄이 되니까 삭제
-      if (line.trim() === "") continue;
+    // ✅ 이미지 토큰 라인은 유지
+    if (isImgTokenLine(line)) {
+      cleaned.push(line.trimEnd());
+      continue;
     }
 
-    cleanedLines.push(line);
+    // ✅ 이모지 토큰(:name:)은 이제 “업로드 매핑 렌더”에서 처리하므로 여기서 지우지 않음
+    // 공백 정리만 살짝
+    line = line.replace(/[ \t]+/g, " ").trimEnd();
+
+    // 완전 빈 줄은 일단 제거(원하면 유지 가능)
+    if (line.trim() === "") continue;
+
+    cleaned.push(line);
   }
 
-  return cleanedLines.join("\n").trimEnd();
+  return cleaned.join("\n").trimEnd();
 }
 
 export function parseDiscordPaste(input: string): ParsedMessage[] {
   const lines = input.replace(/\r\n/g, "\n").split("\n");
 
-  // ✅ 헤더 2종 지원
-  // 1) 작성자 — 2026-02-20 오후 1:02
   const withDate =
     /^(.+?)\s*—\s*(\d{4}-\d{2}-\d{2})\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
-  // 2) 작성자 — 오후 1:02  (당일/날짜 생략)
   const timeOnly = /^(.+?)\s*—\s*(오전|오후)\s*(\d{1,2}:\d{2})\s*$/;
 
   const out: ParsedMessage[] = [];
@@ -96,7 +93,7 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
       const m2 = l.match(timeOnly);
       if (m2) {
         author = m2[1].trim();
-        date = todayYmd(); // ✅ 날짜 없으면 "오늘"로 채움
+        date = todayYmd();
         rawTime = `${m2[2]} ${m2[3]}`;
       }
     }
@@ -104,7 +101,6 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
     const isHeader = !!(author && date && rawTime);
 
     if (isHeader) {
-      // 이전 메시지 저장
       if (current) {
         out.push({
           author: current.author,
@@ -130,7 +126,6 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
       continue;
     }
 
-    // 헤더가 아닌 줄: 현재 메시지 본문으로 붙이기
     if (current) {
       if (l.trim() === "이미지") {
         imgCounter += 1;
@@ -142,7 +137,6 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
     }
   }
 
-  // 마지막 메시지 저장
   if (current) {
     out.push({
       author: current.author,
@@ -153,6 +147,5 @@ export function parseDiscordPaste(input: string): ParsedMessage[] {
     });
   }
 
-  // 빈 내용 제거(원하면 유지해도 됨)
   return out.filter((m) => m.author && m.date && m.rawTime && m.content.length > 0);
 }
