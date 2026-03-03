@@ -37,7 +37,7 @@ function mergeConsecutive(messages: ParsedMessage[]): ParsedMessage[] {
 
     if (canMerge) {
       // 본문 합치기: 줄바꿈 1번/2번 취향대로 조절 가능
-      last.content = `${last.content}\n\n${cur.content}`.trimEnd();
+      last.content = `${last.content}\n${cur.content}`.trimEnd();
       // time은 첫 메시지 기준 유지 (원하면 마지막 시간으로 바꿀 수도 있음)
       continue;
     }
