@@ -160,7 +160,7 @@ function extractEmojiNodes(line: string, emojiImages: Record<string, string | un
           src={url}
           alt={name}
           className="inline-block align-text-bottom"
-          style={{ width: 18, height: 18 }}
+          style={{ width: 28, height: 28 }}
           draggable={false}
         />
       );
